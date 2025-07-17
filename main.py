@@ -35,7 +35,7 @@ async def search_endpoint(request: SearchRequest):
 
     # Step 5: Build response with text and score
     results = [
-        ChunkResult(text=item["text"], score=item["score"])
+        ChunkResult(html=item["html"], score=item["score"])
         for item in search_results
     ]
 

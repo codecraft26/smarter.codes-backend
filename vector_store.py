@@ -69,11 +69,30 @@ def search_query(query, source=None, limit=5):
         else:
             bm25_results = collection.query.bm25(query=query, limit=limit)
         print(f"[DEBUG] BM25 found {len(bm25_results.objects)} results")
+        scores = [getattr(obj, 'score', 0) for obj in bm25_results.objects]
+        max_score = max(scores) if scores else 1
+        if max_score == 0:
+            # All scores are zero, set the top result to 100
+            return [
+                {"html": obj.properties["content"], "score": 100 if i == 0 else 0}
+                for i, obj in enumerate(bm25_results.objects)
+            ]
         return [
-            {"text": obj.properties["content"], "score": getattr(obj, 'score', 1.0)}
+            {"html": obj.properties["content"], "score": round((getattr(obj, 'score', 0) / max_score) * 100) if max_score > 0 else 0}
             for obj in bm25_results.objects
         ]
+    # For vector search, convert distance to a percentage score (higher is better)
+    def distance_to_percent(distance, all_distances):
+        try:
+            d = float(distance)
+        except Exception:
+            d = 1.0
+        # If all distances are the same, return 50
+        if len(set(all_distances)) == 1:
+            return 50
+        return max(0, min(100, round((1.0 - d) * 100)))
+    all_distances = [getattr(obj, 'distance', 1.0) for obj in results.objects]
     return [
-        {"text": obj.properties["content"], "score": obj.distance if hasattr(obj, 'distance') else 1.0}
+        {"html": obj.properties["content"], "score": distance_to_percent(getattr(obj, 'distance', 1.0), all_distances)}
         for obj in results.objects
     ]
