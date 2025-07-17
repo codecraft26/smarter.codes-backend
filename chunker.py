@@ -5,7 +5,7 @@ import math
 model = SentenceTransformer("all-MiniLM-L6-v2")
 tokenizer = AutoTokenizer.from_pretrained("sentence-transformers/all-MiniLM-L6-v2")
 
-def chunk_text(text: str, max_tokens: int = 500):
+def chunk_text(text: str, max_tokens: int = 500):  # changed from 100 to 500
     # Tokenize the text
     tokens = tokenizer.encode(text, add_special_tokens=False)
     chunks = []

@@ -9,7 +9,7 @@ class SearchRequest(BaseModel):
 
 # Response result chunk model
 class ChunkResult(BaseModel):
-    text: str
+    html: str
     score: float  # semantic relevance score
 
 # Full response model
