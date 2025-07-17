@@ -45,6 +45,32 @@ def delete_chunks_by_source(source):
     for obj in results.objects:
         collection.data.delete_by_id(obj.uuid)
 
+def normalize_vector_scores(results):
+    distances = [getattr(obj, 'distance', 1.0) for obj in results.objects]
+    if not distances:
+        return []
+    min_dist = min(distances)
+    max_dist = max(distances)
+    if max_dist == min_dist:
+        return [100 for _ in distances]
+    return [
+        round((max_dist - d) / (max_dist - min_dist) * 100)
+        for d in distances
+    ]
+
+def normalize_bm25_scores(results):
+    scores = [getattr(obj, 'score', 0) for obj in results.objects]
+    if not scores:
+        return []
+    min_score = min(scores)
+    max_score = max(scores)
+    if max_score == min_score:
+        return [100 for _ in scores]
+    return [
+        round((s - min_score) / (max_score - min_score) * 100)
+        for s in scores
+    ]
+
 def search_query(query, source=None, limit=5):
     init_collection()
     collection = client.collections.get("HtmlChunk")
@@ -69,30 +95,13 @@ def search_query(query, source=None, limit=5):
         else:
             bm25_results = collection.query.bm25(query=query, limit=limit)
         print(f"[DEBUG] BM25 found {len(bm25_results.objects)} results")
-        scores = [getattr(obj, 'score', 0) for obj in bm25_results.objects]
-        max_score = max(scores) if scores else 1
-        if max_score == 0:
-            # All scores are zero, set the top result to 100
-            return [
-                {"html": obj.properties["content"], "score": 100 if i == 0 else 0}
-                for i, obj in enumerate(bm25_results.objects)
-            ]
+        norm_scores = normalize_bm25_scores(bm25_results)
         return [
-            {"html": obj.properties["content"], "score": round((getattr(obj, 'score', 0) / max_score) * 100) if max_score > 0 else 0}
-            for obj in bm25_results.objects
+            {"html": obj.properties["content"], "score": norm_scores[i]}
+            for i, obj in enumerate(bm25_results.objects)
         ]
-    # For vector search, convert distance to a percentage score (higher is better)
-    def distance_to_percent(distance, all_distances):
-        try:
-            d = float(distance)
-        except Exception:
-            d = 1.0
-        # If all distances are the same, return 50
-        if len(set(all_distances)) == 1:
-            return 50
-        return max(0, min(100, round((1.0 - d) * 100)))
-    all_distances = [getattr(obj, 'distance', 1.0) for obj in results.objects]
+    norm_scores = normalize_vector_scores(results)
     return [
-        {"html": obj.properties["content"], "score": distance_to_percent(getattr(obj, 'distance', 1.0), all_distances)}
-        for obj in results.objects
+        {"html": obj.properties["content"], "score": norm_scores[i]}
+        for i, obj in enumerate(results.objects)
     ]
