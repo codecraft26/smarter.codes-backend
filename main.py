@@ -1,5 +1,6 @@
 # main.py
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from models import SearchRequest, SearchResponse, ChunkResult
 from scraper import fetch_and_clean_html
 from chunker import chunk_text
@@ -9,6 +10,15 @@ app = FastAPI(
     title="Semantic HTML Search API",
     description="Provide a URL and a query string to search the most relevant content chunks from that webpage.",
     version="1.0.0"
+)
+
+# Allow CORS for all origins (open to anyone)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get("/")
